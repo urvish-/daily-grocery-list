@@ -1,6 +1,6 @@
-# Deploy to Netlify (Free — No Database Needed)
+# Deploy to Netlify (Free)
 
-Host the app for free on Netlify. Family sync uses **Trystero** (open-source P2P) — no Firebase, no Supabase, no paid backend.
+Host the app on Netlify. Family sync uses **Supabase free cloud** — see **[SUPABASE-SETUP.md](SUPABASE-SETUP.md)** (required for cross-device sync).
 
 ---
 
@@ -10,26 +10,17 @@ Host the app for free on Netlify. Family sync uses **Trystero** (open-source P2P
 |---|---|---|
 | **GitHub** | Code hosting | Free |
 | **Netlify** | HTTPS website | Free |
-| **Trystero** | Real-time sync between phones | Free (P2P, no server) |
-
-No account signup required for sync — only for hosting (GitHub + Netlify).
+| **Supabase** | Cloud sync (basket + members) | Free (no credit card) |
 
 ---
 
-## How sync works (no database)
+## Before deploy — configure cloud sync
 
-```
-  Your phone  ←—— WebRTC ——→  Wife's phone
-       ↑                            ↑
-       └———— WebRTC ————→  Maid's phone
-```
+1. Follow **[SUPABASE-SETUP.md](SUPABASE-SETUP.md)** (5 min)
+2. Edit `js/supabase-config.js` with your URL + anon key
+3. Commit and push
 
-- Share link contains a room code: `?home=habc12345`
-- When family opens the app, phones connect directly
-- Changes sync in real time when members are online
-- List is also saved on each device (works offline on that phone)
-
-> **Tip:** At least one family member (usually the owner) should open the app once so new joiners receive the current list.
+Without this step, **family sync will not work across devices**.
 
 ---
 

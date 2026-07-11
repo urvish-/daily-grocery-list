@@ -29,8 +29,13 @@
     </div>
   </header>
 
+  <div id="cloudWarning" class="banner-warning hidden">
+    ⚠️ Cloud sync not configured — family won't see shared list across devices.
+    <a href="docs/SUPABASE-SETUP.md" target="_blank">Free 5-min setup</a>
+  </div>
+
   <div id="syncInfo" class="banner-info hidden">
-    🔄 Free sync — no account needed. List updates when family members have the app open.
+    🔄 List syncs to free cloud — family sees same basket on all devices.
   </div>
 
   <main class="main-content">
@@ -66,6 +71,11 @@
         <button class="btn btn-primary btn-sm" id="copyLinkBtn" type="button">Copy</button>
       </div>
       <button class="btn btn-secondary btn-full" id="shareLinkBtn" type="button">📤 Share link</button>
+
+      <div class="section-label" style="margin-top:16px">Cloud sync</div>
+      <p id="syncStatusLabel" class="sync-status-label">Checking sync…</p>
+      <button class="btn btn-primary btn-full" id="syncNowBtn" type="button">🔄 Sync now</button>
+      <p class="help-text">Auto-syncs every 12 seconds. Tap <strong>Sync now</strong> if list looks outdated.</p>
 
       <div id="membersSection" class="hidden">
         <div class="section-label" style="margin-top:20px">Family members</div>
@@ -161,6 +171,8 @@
 
   <div id="toast" class="toast"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
   <script src="data/catalog.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/app.js"></script>

@@ -8,14 +8,13 @@
 
 | Step | Action |
 |---|---|
-| 1 | Push to GitHub |
-| 2 | Deploy to Netlify (free) — **[docs/DEPLOY.md](docs/DEPLOY.md)** |
-| 3 | Create home → share link with family on WhatsApp |
-| 4 | Install on phone — **[docs/INSTALL-APP.md](docs/INSTALL-APP.md)** |
+| 1 | **Set up free cloud sync** — **[docs/SUPABASE-SETUP.md](docs/SUPABASE-SETUP.md)** (5 min, ₹0) |
+| 2 | Edit `js/supabase-config.js` with your Supabase URL + key |
+| 3 | Push to GitHub → Deploy on Netlify — **[docs/DEPLOY.md](docs/DEPLOY.md)** |
+| 4 | Create home → share link → family joins and sees same basket |
+| 5 | Install on phone — **[docs/INSTALL-APP.md](docs/INSTALL-APP.md)** |
 
-**No Firebase. No database. No cost.** Sync uses [Trystero](https://github.com/dmotz/trystero) (open-source P2P) — phones connect directly.
-
-See **[docs/SYNC.md](docs/SYNC.md)** for how free sync works.
+**Supabase free tier** stores your basket in the cloud so family sync works even when joining from a new phone hours later.
 
 ### Deploy to Netlify (after GitHub push)
 
@@ -425,9 +424,11 @@ Open **http://localhost:8080** on your phone (same Wi-Fi) or desktop browser.
 
 ### Phase 2 — Multi-user sync (Week 2) ✅
 
-- [x] **Free P2P sync** via Trystero (open source, no database)
+- [x] **Supabase free cloud sync** (works when family joins later)
 - [x] Shareable URL with household ID (`?home=habc12345`)
-- [x] Real-time list updates when family is online
+- [x] Real-time + auto sync every 12 seconds
+- [x] **Manual Sync now button** in Family tab
+- [x] Sync error display + toast notifications
 - [x] Member name on add/purchase events
 - [x] Owner sees family members list
 - [x] Family tab with copy/share link
@@ -439,7 +440,7 @@ Open **http://localhost:8080** on your phone (same Wi-Fi) or desktop browser.
 
 #### Setup & deploy
 
-Full guide: **[docs/DEPLOY.md](docs/DEPLOY.md)** — GitHub + Netlify only, no backend setup.
+Full guide: **[docs/SUPABASE-SETUP.md](docs/SUPABASE-SETUP.md)** + **[docs/DEPLOY.md](docs/DEPLOY.md)**
 
 How sync works: **[docs/SYNC.md](docs/SYNC.md)**
 
@@ -523,7 +524,11 @@ daily-grocery-list/
 ├── css/app.css
 ├── js/
 │   ├── app.js                ← main app logic
-│   └── sync.js               ← Trystero P2P sync (free, no server)
+│   ├── sync.js               ← Supabase cloud sync
+│   ├── supabase-config.js    ← your free Supabase keys
+│   └── supabase-config.example.js
+├── supabase/
+│   └── schema.sql            ← run once in Supabase SQL editor
 ├── data/
 │   ├── default-catalog.json
 │   └── catalog.js
@@ -531,9 +536,10 @@ daily-grocery-list/
 │   ├── icon-192.png
 │   └── icon-512.png
 └── docs/
-    ├── DEPLOY.md             ← GitHub + Netlify (free hosting)
-    ├── SYNC.md               ← How free P2P sync works
-    └── INSTALL-APP.md        ← Add to home screen steps
+    ├── DEPLOY.md             ← GitHub + Netlify
+    ├── SUPABASE-SETUP.md     ← Free cloud sync (required)
+    ├── SYNC.md               ← How sync works
+    └── INSTALL-APP.md        ← Add to home screen
 ```
 
 ---

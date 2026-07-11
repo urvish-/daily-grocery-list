@@ -630,6 +630,26 @@ body {
   border-bottom: 1px solid #c8e6c9;
 }
 
+.sync-dot.error {
+  background: #ef5350;
+  box-shadow: 0 0 6px #ef5350;
+}
+
+.sync-status-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.sync-status-label.ok {
+  color: var(--primary);
+}
+
+.sync-status-label.error {
+  color: #c62828;
+}
+
 .banner-warning {
   background: #fff3e0;
   color: #e65100;

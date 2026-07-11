@@ -1,87 +1,48 @@
-# How Sync Works (Free — No Database)
+# How Sync Works
 
-This app uses **[Trystero](https://github.com/dmotz/trystero)** — an open-source JavaScript library for peer-to-peer sync. No Firebase, no paid cloud database.
+## Why P2P was replaced
 
----
+The previous Trystero P2P sync **only worked when both phones were online at the same time**. If your wife opened the link while you were offline, she got an empty list. That is a limitation of peer-to-peer — there is no server to store data.
 
-## Why no database?
-
-Traditional sync needs a server (Firebase, Supabase, etc.). Trystero connects family phones **directly** using WebRTC — the same technology used in video calls.
-
-| | Firebase / Cloud DB | Trystero P2P (this app) |
-|---|---|---|
-| **Cost** | Free tier, then paid | **₹0 forever** |
-| **Account needed** | Yes (Google) | **No** |
-| **Setup** | Config keys, rules | **None** |
-| **Sync speed** | Instant | Instant (when online) |
-| **Offline** | Cached + sync later | Saved on each device |
-
----
-
-## What you need to know
-
-### 1. Share link = room key
+## Current solution: Supabase cloud (free)
 
 ```
-https://your-app.netlify.app/?home=habc12345
-                              └──── room code ────┘
+  Phone 1 ──→  ☁️ Supabase (free cloud)  ←── Phone 2
+  Phone 3 ──→         ↑
+  Maid    ──→    shared basket + members
 ```
 
-Anyone with this link joins the same grocery list.
-
-### 2. Real-time when online
-
-When your wife adds "2 kg Tomato" and her app is open, you see it within seconds if your app is also open.
-
-### 3. Saved on each phone
-
-Each device keeps a local copy. If you're offline, you still see your last list. When you come back online with family, lists merge automatically.
-
-### 4. Owner should open app first
-
-When a new member joins:
-- If the **owner** (or anyone with the current list) has the app open → new member gets the full list
-- If everyone is offline → new member starts fresh until someone with data opens the app
-
-**Best practice:** Owner opens app daily. Family members open when adding or shopping.
-
-### 5. Sync status dot (header)
-
-| Dot | Meaning |
+| Feature | How it works |
 |---|---|
-| 🟢 Green | Family member(s) online — live sync |
-| 🟡 Yellow | Connected to room, waiting for family |
-| No dot | Not in a household yet |
+| **Add item** | Saved to cloud instantly |
+| **Join from link** | Downloads existing basket from cloud |
+| **New family member** | Registered in cloud, visible to owner |
+| **Auto sync** | Every 12 seconds + realtime push |
+| **Manual sync** | **Sync now** button in Family tab |
+| **Offline** | Cached on device; syncs when back online |
 
----
+## Setup required (one time)
 
-## Privacy
+See **[SUPABASE-SETUP.md](SUPABASE-SETUP.md)** — 5 minutes, ₹0 forever.
 
-- Data stays between family devices — no company server stores your grocery list
-- Room code in URL is the only "password" — share only with family
-- Uses free public WebRTC signaling (BitTorrent trackers) — only room metadata, not your list content
+Without Supabase config, the app works on **one device only**.
 
----
+## Manual sync
 
-## Technical details
+Use **🔄 Sync now** in the **Family** tab when:
+- Family member just joined
+- List looks outdated
+- Header dot is red (error)
+- After fixing Supabase config
 
-- **Library:** [Trystero](https://github.com/dmotz/trystero) (MIT license)
-- **Transport:** WebRTC data channels via BitTorrent trackers
-- **Local storage:** Browser `localStorage` per household
-- **Merge:** Items merged by ID; same product quantities combined
+## Error handling
 
----
-
-## Limitations (honest)
-
-| Limitation | Workaround |
+| Error | What happens |
 |---|---|
-| All family offline → no cross-device sync | Owner opens app once daily |
-| No push notifications yet | Open app from home screen icon |
-| Room code in URL is security | Don't share link publicly |
-
-These are acceptable trade-offs for a **completely free** family grocery list with zero setup.
+| Cloud unreachable | Toast: "Save failed — tap Sync now" |
+| Sync fails | Red dot + error text in Family tab |
+| Item saved locally | Pushed to cloud on next successful sync |
 
 ---
 
-*See also: [DEPLOY.md](DEPLOY.md) · [INSTALL-APP.md](INSTALL-APP.md)*
+*See also: [SUPABASE-SETUP.md](SUPABASE-SETUP.md) · [DEPLOY.md](DEPLOY.md)*

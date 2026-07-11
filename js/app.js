@@ -20,7 +20,7 @@
   let sheetProduct = null;
   let sheetQty = 0;
   let syncEnabled = true;
-  let peerCount = 0;
+  let syncStatus = { ok: true, syncing: false, time: null, error: null, cloud: false };
   let unsubscribeItems = null;
   let unsubscribeMembers = null;
   let unsubscribeMeta = null;
@@ -156,22 +156,58 @@
       renderFamilyPanel();
     });
 
-    GrocerySync.onPeerCountChange((n) => {
-      peerCount = n;
+    GrocerySync.onSyncStatusChange((s) => {
+      syncStatus = s;
       renderHeader();
+      renderFamilyPanel();
     });
-    peerCount = GrocerySync.getPeerCount(householdId);
+    syncStatus = GrocerySync.getSyncStatus();
+
+    if (GrocerySync.isCloudReady()) {
+      GrocerySync.startAutoSync(householdId);
+      GrocerySync.syncNow(householdId).catch(() => {});
+    }
+  }
+
+  async function manualSync() {
+    if (!householdId) {
+      showToast("Create or join a home first");
+      return;
+    }
+    const btn = $("#syncNowBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Syncing…";
+    }
+    const result = await GrocerySync.syncNow(householdId);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "🔄 Sync now";
+    }
+    if (result.ok) showToast("Synced with cloud ✓");
+    else showToast("Sync failed: " + (result.error || "unknown error"));
+    render();
   }
 
   async function persistItem(item) {
     if (syncEnabled && householdId) {
-      await GrocerySync.setItem(householdId, item);
+      try {
+        await GrocerySync.setItem(householdId, item);
+      } catch (e) {
+        showToast("Save failed — tap Sync now in Family tab");
+        throw e;
+      }
     }
   }
 
   async function deleteItem(itemId) {
     if (syncEnabled && householdId) {
-      await GrocerySync.removeItem(householdId, itemId);
+      try {
+        await GrocerySync.removeItem(householdId, itemId);
+      } catch (e) {
+        showToast("Update failed — tap Sync now in Family tab");
+        throw e;
+      }
     } else {
       listItems = listItems.filter((i) => i.id !== itemId);
       render();
@@ -255,6 +291,9 @@
     render();
     $("#syncInfo").classList.remove("hidden");
     showToast("Home created! Share link with family.");
+    if (!GrocerySync.isCloudReady()) {
+      showToast("⚠️ Set up free cloud sync — see docs/SUPABASE-SETUP.md");
+    }
   }
 
   async function joinHousehold(hId, name) {
@@ -343,11 +382,27 @@
 
     const syncDot = $("#syncStatus");
     if (syncDot) {
-      const live = syncEnabled && householdId;
-      syncDot.className = "sync-dot " + (live ? (peerCount > 0 ? "online" : "waiting") : "offline");
-      if (!live) syncDot.title = "Not connected";
-      else if (peerCount > 0) syncDot.title = `${peerCount} family member${peerCount > 1 ? "s" : ""} online — live sync`;
-      else syncDot.title = "Waiting for family to open app — list saved on this device";
+      let cls = "offline";
+      let title = "Not in a household";
+      if (householdId) {
+        if (!syncStatus.cloud) {
+          cls = "waiting";
+          title = "Cloud not configured — family sync won't work across devices";
+        } else if (syncStatus.error) {
+          cls = "error";
+          title = "Sync error: " + syncStatus.error;
+        } else if (syncStatus.syncing) {
+          cls = "waiting";
+          title = "Syncing…";
+        } else {
+          cls = "online";
+          title = syncStatus.time
+            ? "Cloud sync OK · " + new Date(syncStatus.time).toLocaleTimeString()
+            : "Cloud sync active";
+        }
+      }
+      syncDot.className = "sync-dot " + cls;
+      syncDot.title = title;
     }
   }
 
@@ -455,6 +510,26 @@
 
     $("#familyHomeName").textContent = householdMeta?.name || "Shared Home";
     $("#memberCount").textContent = members.length ? `${members.length} member${members.length > 1 ? "s" : ""}` : "";
+
+    const syncLabel = $("#syncStatusLabel");
+    if (syncLabel) {
+      if (!GrocerySync.isCloudReady()) {
+        syncLabel.textContent = "⚠️ Cloud sync not set up — see docs/SUPABASE-SETUP.md";
+        syncLabel.className = "sync-status-label error";
+      } else if (syncStatus.error) {
+        syncLabel.textContent = "❌ " + syncStatus.error;
+        syncLabel.className = "sync-status-label error";
+      } else if (syncStatus.syncing) {
+        syncLabel.textContent = "Syncing…";
+        syncLabel.className = "sync-status-label";
+      } else if (syncStatus.time) {
+        syncLabel.textContent = "✓ Last synced " + new Date(syncStatus.time).toLocaleTimeString();
+        syncLabel.className = "sync-status-label ok";
+      } else {
+        syncLabel.textContent = "Auto-sync every 12 seconds";
+        syncLabel.className = "sync-status-label";
+      }
+    }
   }
 
   function formatDate(iso) {
@@ -537,8 +612,8 @@
     if (!name) { $("#createUserName").focus(); return; }
     try {
       await createHousehold(homeName, name);
-    } catch {
-      showToast("Could not create home. Try again.");
+    } catch (e) {
+      showToast("Could not create home: " + (e.message || "try again"));
     }
   }
 
@@ -549,8 +624,8 @@
     if (!name) { $("#joinUserName").focus(); return; }
     try {
       await joinHousehold(code, name);
-    } catch {
-      showToast("Could not join. Check the link and try again.");
+    } catch (e) {
+      showToast("Could not join: " + (e.message || "check link & cloud setup"));
     }
   }
 
@@ -643,6 +718,7 @@
 
     $("#copyLinkBtn").addEventListener("click", copyShareLink);
     $("#shareLinkBtn").addEventListener("click", shareViaNative);
+    $("#syncNowBtn").addEventListener("click", manualSync);
     $("#createHomeBtn").addEventListener("click", handleCreateHome);
     $("#joinHomeBtn").addEventListener("click", handleJoinHome);
     $("#showCreateBtn").addEventListener("click", () => showSetupModal("create"));
@@ -666,6 +742,10 @@
     loadIdentity();
     bindEvents();
     await loadCatalog();
+
+    if (!GrocerySync.isConfigured()) {
+      $("#cloudWarning").classList.remove("hidden");
+    }
 
     const urlHome = parseHomeFromUrl();
 
