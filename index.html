@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#2e7d32">
+  <meta name="description" content="Shared household grocery list — add items, sync with family in real time">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Grocery List">
+  <title>Daily Grocery List</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-top">
+      <div>
+        <div class="app-title">
+          Daily Grocery List
+          <span class="sync-dot offline" id="syncStatus" title="Sync status"></span>
+        </div>
+        <div class="app-subtitle hidden" id="householdLabel"></div>
+      </div>
+      <button class="user-badge" id="userBadge" type="button">Set name</button>
+    </div>
+  </header>
+
+  <div id="syncInfo" class="banner-info hidden">
+    🔄 Free sync — no account needed. List updates when family members have the app open.
+  </div>
+
+  <main class="main-content">
+
+    <section id="listPanel" class="panel">
+      <div class="section-label">To Buy (<span id="listCount">0</span>)</div>
+      <div id="listEmpty" class="empty-state">
+        <div class="empty-icon">🛒</div>
+        <p>Nothing to buy yet.<br>Go to <strong>Add Items</strong> to start.</p>
+      </div>
+      <div id="listItems" class="list-items"></div>
+    </section>
+
+    <section id="catalogPanel" class="panel hidden">
+      <input type="search" id="searchBox" class="search-box" placeholder="Search products…" autocomplete="off">
+      <div class="section-label">Categories</div>
+      <div id="categoryChips" class="category-scroll"></div>
+      <div class="section-label" style="margin-top:4px">Tap a product to add</div>
+      <div id="productGrid" class="product-grid"></div>
+    </section>
+
+    <section id="familyPanel" class="panel hidden">
+      <div class="family-card">
+        <div class="family-card-icon">🏠</div>
+        <h2 id="familyHomeName">My Home</h2>
+        <p id="memberCount" class="text-muted"></p>
+      </div>
+
+      <div class="section-label">Share with family</div>
+      <p class="help-text">Send this link on WhatsApp. Family members open it, enter their name, and join the same list.</p>
+      <div class="share-row">
+        <input type="text" id="shareLinkInput" class="share-input" readonly placeholder="Create or join a home first">
+        <button class="btn btn-primary btn-sm" id="copyLinkBtn" type="button">Copy</button>
+      </div>
+      <button class="btn btn-secondary btn-full" id="shareLinkBtn" type="button">📤 Share link</button>
+
+      <div id="membersSection" class="hidden">
+        <div class="section-label" style="margin-top:20px">Family members</div>
+        <div id="membersList" class="members-list"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="nav-btn-wrap">
+      <button class="nav-btn active" id="navList" type="button">
+        <span class="nav-icon">📋</span>
+        To Buy
+        <span class="nav-badge hidden" id="navBadge">0</span>
+      </button>
+    </div>
+    <button class="nav-btn" id="navCatalog" type="button">
+      <span class="nav-icon">➕</span>
+      Add Items
+    </button>
+    <button class="nav-btn" id="navFamily" type="button">
+      <span class="nav-icon">👨‍👩‍👧</span>
+      Family
+    </button>
+  </nav>
+
+  <!-- Add Item Sheet -->
+  <div id="sheetOverlay" class="sheet-overlay hidden">
+    <div class="add-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-product">
+        <div class="sheet-icon" id="sheetIcon">🍅</div>
+        <div>
+          <div class="sheet-name" id="sheetName">Tomato</div>
+          <div class="sheet-category" id="sheetCategory">Vegetables</div>
+        </div>
+      </div>
+      <div class="sheet-stepper">
+        <button class="qty-btn" id="sheetMinus" type="button">−</button>
+        <div class="sheet-qty" id="sheetQty">1 kg</div>
+        <button class="qty-btn" id="sheetPlus" type="button">+</button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary" id="sheetCancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="sheetAdd" type="button">Add to List</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Household Setup Modal -->
+  <div id="setupModal" class="name-modal hidden">
+    <div class="name-card setup-card">
+      <h2>🏠 Household Setup</h2>
+
+      <div id="setupChoice" class="hidden">
+        <p class="text-muted">Create a new shared list or join an existing one.</p>
+        <button class="btn btn-primary btn-full" id="showCreateBtn" type="button">Create new home</button>
+        <button class="btn btn-secondary btn-full" id="showJoinBtn" type="button" style="margin-top:8px">Join with link</button>
+      </div>
+
+      <div id="setupCreate">
+        <p class="text-muted">You will be the owner and can share the link with family.</p>
+        <label class="field-label">Home name</label>
+        <input type="text" id="createHomeName" class="name-input" placeholder="e.g. Sharma Home" maxlength="40">
+        <label class="field-label">Your name</label>
+        <input type="text" id="createUserName" class="name-input" placeholder="e.g. Ravi" maxlength="30">
+        <button class="btn btn-primary btn-full" id="createHomeBtn" type="button">Create &amp; get share link</button>
+        <button class="btn btn-secondary btn-full" id="skipSetupBtn" type="button" style="margin-top:10px">Browse products first</button>
+      </div>
+
+      <div id="setupJoin" class="hidden">
+        <p class="text-muted">Paste the link shared by the home owner.</p>
+        <label class="field-label">Home code or link</label>
+        <input type="text" id="joinCodeInput" class="name-input" placeholder="e.g. habc12345 or full URL">
+        <label class="field-label">Your name</label>
+        <input type="text" id="joinUserName" class="name-input" placeholder="e.g. Priya, Maid" maxlength="30">
+        <button class="btn btn-primary btn-full" id="joinHomeBtn" type="button">Join household</button>
+        <button class="btn btn-secondary btn-full" id="skipJoinBtn" type="button" style="margin-top:10px">Browse products first</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Name Modal -->
+  <div id="nameModal" class="name-modal hidden">
+    <div class="name-card">
+      <h2>Your Name</h2>
+      <p class="text-muted">So family knows who added or bought items.</p>
+      <input type="text" id="nameInput" class="name-input" placeholder="e.g. Priya, Ravi, Maid" maxlength="30">
+      <button class="btn btn-primary btn-full" id="nameConfirm" type="button">Continue</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="data/catalog.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

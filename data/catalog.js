@@ -1,0 +1,132 @@
+window.GROCERY_CATALOG = {
+  "categories": [
+    {
+      "id": "vegetables",
+      "name": "Vegetables",
+      "icon": "🥬",
+      "color": "#4caf50",
+      "products": [
+        { "id": "tomato", "name": "Tomato", "icon": "🍅", "unit": "kg", "step": 0.25, "defaultQty": 1 },
+        { "id": "onion", "name": "Onion", "icon": "🧅", "unit": "kg", "step": 0.5, "defaultQty": 1 },
+        { "id": "potato", "name": "Potato", "icon": "🥔", "unit": "kg", "step": 0.5, "defaultQty": 2 },
+        { "id": "carrot", "name": "Carrot", "icon": "🥕", "unit": "kg", "step": 0.25, "defaultQty": 0.5 },
+        { "id": "cauliflower", "name": "Cauliflower", "icon": "🥦", "unit": "count", "step": 1, "defaultQty": 1 },
+        { "id": "cabbage", "name": "Cabbage", "icon": "🥬", "unit": "count", "step": 1, "defaultQty": 1 },
+        { "id": "spinach", "name": "Spinach", "icon": "🌿", "unit": "bunch", "step": 1, "defaultQty": 1 },
+        { "id": "coriander", "name": "Coriander", "icon": "🌿", "unit": "bunch", "step": 1, "defaultQty": 1 },
+        { "id": "green-chilli", "name": "Green Chilli", "icon": "🌶️", "unit": "g", "step": 50, "defaultQty": 100 },
+        { "id": "ginger", "name": "Ginger", "icon": "🫚", "unit": "g", "step": 50, "defaultQty": 100 },
+        { "id": "garlic", "name": "Garlic", "icon": "🧄", "unit": "g", "step": 50, "defaultQty": 100 },
+        { "id": "lady-finger", "name": "Lady Finger", "icon": "🫛", "unit": "kg", "step": 0.25, "defaultQty": 0.5 },
+        { "id": "brinjal", "name": "Brinjal", "icon": "🍆", "unit": "kg", "step": 0.25, "defaultQty": 0.5 },
+        { "id": "cucumber", "name": "Cucumber", "icon": "🥒", "unit": "kg", "step": 0.25, "defaultQty": 0.5 },
+        { "id": "beans", "name": "Beans", "icon": "🫘", "unit": "kg", "step": 0.25, "defaultQty": 0.5 }
+      ]
+    },
+    {
+      "id": "fruits",
+      "name": "Fruits",
+      "icon": "🍎",
+      "color": "#ff7043",
+      "products": [
+        { "id": "apple", "name": "Apple", "icon": "🍎", "unit": "kg", "step": 0.25, "defaultQty": 1 },
+        { "id": "banana", "name": "Banana", "icon": "🍌", "unit": "dozen", "step": 0.5, "defaultQty": 1 },
+        { "id": "orange", "name": "Orange", "icon": "🍊", "unit": "kg", "step": 0.25, "defaultQty": 1 },
+        { "id": "mango", "name": "Mango", "icon": "🥭", "unit": "kg", "step": 0.25, "defaultQty": 1 },
+        { "id": "grapes", "name": "Grapes", "icon": "🍇", "unit": "kg", "step": 0.25, "defaultQty": 0.5 },
+        { "id": "pomegranate", "name": "Pomegranate", "icon": "🍎", "unit": "kg", "step": 0.25, "defaultQty": 0.5 },
+        { "id": "watermelon", "name": "Watermelon", "icon": "🍉", "unit": "kg", "step": 0.5, "defaultQty": 2 },
+        { "id": "papaya", "name": "Papaya", "icon": "🍈", "unit": "count", "step": 1, "defaultQty": 1 },
+        { "id": "lemon", "name": "Lemon", "icon": "🍋", "unit": "count", "step": 1, "defaultQty": 6 },
+        { "id": "coconut", "name": "Coconut", "icon": "🥥", "unit": "count", "step": 1, "defaultQty": 2 }
+      ]
+    },
+    {
+      "id": "groceries",
+      "name": "Groceries",
+      "icon": "🛒",
+      "color": "#8d6e63",
+      "products": [
+        { "id": "rice", "name": "Rice", "icon": "🍚", "unit": "kg", "step": 1, "defaultQty": 5 },
+        { "id": "atta", "name": "Atta", "icon": "🌾", "unit": "kg", "step": 1, "defaultQty": 5 },
+        { "id": "dal", "name": "Dal", "icon": "🫘", "unit": "kg", "step": 0.5, "defaultQty": 1 },
+        { "id": "oil", "name": "Cooking Oil", "icon": "🫗", "unit": "liter", "step": 0.5, "defaultQty": 1 },
+        { "id": "sugar", "name": "Sugar", "icon": "🍬", "unit": "kg", "step": 0.5, "defaultQty": 1 },
+        { "id": "salt", "name": "Salt", "icon": "🧂", "unit": "kg", "step": 0.25, "defaultQty": 1 },
+        { "id": "tea", "name": "Tea", "icon": "🍵", "unit": "g", "step": 100, "defaultQty": 250 },
+        { "id": "coffee", "name": "Coffee", "icon": "☕", "unit": "g", "step": 50, "defaultQty": 100 },
+        { "id": "biscuit", "name": "Biscuits", "icon": "🍪", "unit": "pack", "step": 1, "defaultQty": 1 },
+        { "id": "bread", "name": "Bread", "icon": "🍞", "unit": "pack", "step": 1, "defaultQty": 1 },
+        { "id": "poha", "name": "Poha", "icon": "🥣", "unit": "kg", "step": 0.5, "defaultQty": 1 },
+        { "id": "besan", "name": "Besan", "icon": "🌾", "unit": "kg", "step": 0.5, "defaultQty": 1 },
+        { "id": "masala", "name": "Garam Masala", "icon": "🌶️", "unit": "g", "step": 50, "defaultQty": 100 },
+        { "id": "turmeric", "name": "Turmeric", "icon": "🟡", "unit": "g", "step": 50, "defaultQty": 100 },
+        { "id": "eggs", "name": "Eggs", "icon": "🥚", "unit": "count", "step": 1, "defaultQty": 6 }
+      ]
+    },
+    {
+      "id": "milk",
+      "name": "Milk Products",
+      "icon": "🥛",
+      "color": "#42a5f5",
+      "products": [
+        { "id": "milk-packet", "name": "Milk", "icon": "🥛", "unit": "liter", "step": 0.5, "defaultQty": 1 },
+        { "id": "curd", "name": "Curd", "icon": "🥣", "unit": "kg", "step": 0.25, "defaultQty": 0.5 },
+        { "id": "paneer", "name": "Paneer", "icon": "🧀", "unit": "g", "step": 250, "defaultQty": 250 },
+        { "id": "butter", "name": "Butter", "icon": "🧈", "unit": "g", "step": 100, "defaultQty": 100 },
+        { "id": "ghee", "name": "Ghee", "icon": "🫙", "unit": "g", "step": 250, "defaultQty": 500 },
+        { "id": "cheese", "name": "Cheese", "icon": "🧀", "unit": "g", "step": 100, "defaultQty": 200 },
+        { "id": "cream", "name": "Fresh Cream", "icon": "🥛", "unit": "ml", "step": 100, "defaultQty": 200 },
+        { "id": "lassi", "name": "Lassi / Buttermilk", "icon": "🥤", "unit": "liter", "step": 0.5, "defaultQty": 1 }
+      ]
+    },
+    {
+      "id": "washing",
+      "name": "Washing",
+      "icon": "🧼",
+      "color": "#26c6da",
+      "products": [
+        { "id": "detergent-powder", "name": "Detergent Powder", "icon": "🫧", "unit": "kg", "step": 0.5, "defaultQty": 1 },
+        { "id": "detergent-liquid", "name": "Detergent Liquid", "icon": "🧴", "unit": "liter", "step": 0.5, "defaultQty": 1 },
+        { "id": "dishwash", "name": "Dishwash Liquid", "icon": "🍽️", "unit": "ml", "step": 250, "defaultQty": 500 },
+        { "id": "fabric-softener", "name": "Fabric Softener", "icon": "👕", "unit": "ml", "step": 250, "defaultQty": 500 },
+        { "id": "bleach", "name": "Bleach", "icon": "🧪", "unit": "ml", "step": 250, "defaultQty": 500 },
+        { "id": "stain-remover", "name": "Stain Remover", "icon": "✨", "unit": "ml", "step": 100, "defaultQty": 200 }
+      ]
+    },
+    {
+      "id": "bathroom",
+      "name": "Bathroom & Sanitary",
+      "icon": "🚿",
+      "color": "#7e57c2",
+      "products": [
+        { "id": "toilet-paper", "name": "Toilet Paper", "icon": "🧻", "unit": "roll", "step": 1, "defaultQty": 2 },
+        { "id": "tissue", "name": "Tissue Box", "icon": "🧻", "unit": "box", "step": 1, "defaultQty": 1 },
+        { "id": "soap", "name": "Bath Soap", "icon": "🧼", "unit": "count", "step": 1, "defaultQty": 2 },
+        { "id": "shampoo", "name": "Shampoo", "icon": "🧴", "unit": "ml", "step": 100, "defaultQty": 200 },
+        { "id": "toothpaste", "name": "Toothpaste", "icon": "🪥", "unit": "count", "step": 1, "defaultQty": 1 },
+        { "id": "toothbrush", "name": "Toothbrush", "icon": "🪥", "unit": "count", "step": 1, "defaultQty": 1 },
+        { "id": "handwash", "name": "Hand Wash", "icon": "🧴", "unit": "ml", "step": 250, "defaultQty": 250 },
+        { "id": "floor-cleaner", "name": "Floor Cleaner", "icon": "🧹", "unit": "ml", "step": 250, "defaultQty": 500 },
+        { "id": "toilet-cleaner", "name": "Toilet Cleaner", "icon": "🚽", "unit": "ml", "step": 250, "defaultQty": 500 },
+        { "id": "sanitary-pads", "name": "Sanitary Pads", "icon": "📦", "unit": "pack", "step": 1, "defaultQty": 1 },
+        { "id": "razor", "name": "Razor / Blades", "icon": "🪒", "unit": "count", "step": 1, "defaultQty": 1 }
+      ]
+    },
+    {
+      "id": "hosiery",
+      "name": "Hosiery",
+      "icon": "🧦",
+      "color": "#ec407a",
+      "products": [
+        { "id": "socks", "name": "Socks", "icon": "🧦", "unit": "pair", "step": 1, "defaultQty": 2 },
+        { "id": "vest", "name": "Vest / Innerwear", "icon": "👕", "unit": "count", "step": 1, "defaultQty": 2 },
+        { "id": "handkerchief", "name": "Handkerchief", "icon": "🤍", "unit": "count", "step": 1, "defaultQty": 2 },
+        { "id": "towel", "name": "Towel", "icon": "🏖️", "unit": "count", "step": 1, "defaultQty": 1 },
+        { "id": "bedsheet", "name": "Bedsheet", "icon": "🛏️", "unit": "count", "step": 1, "defaultQty": 1 },
+        { "id": "pillow-cover", "name": "Pillow Cover", "icon": "🛏️", "unit": "count", "step": 1, "defaultQty": 2 }
+      ]
+    }
+  ]
+}
+;
