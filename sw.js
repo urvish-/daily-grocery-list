@@ -1,10 +1,11 @@
-const CACHE = "grocery-v3";
+const CACHE = "grocery-v4";
 const ASSETS = [
   "./",
   "./index.html",
   "./css/app.css",
   "./js/app.js",
   "./js/sync.js",
+  "./js/mqtt-config.js",
   "./data/catalog.js",
   "./data/default-catalog.json",
   "./manifest.json",

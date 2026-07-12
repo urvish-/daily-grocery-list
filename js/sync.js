@@ -80,6 +80,20 @@
     saveJSON(lsKey(householdId, "members"), obj);
   }
 
+  function getRevision(householdId) {
+    return loadJSON(lsKey(householdId, "revision"), 0);
+  }
+
+  function setRevision(householdId, rev) {
+    saveJSON(lsKey(householdId, "revision"), rev);
+  }
+
+  function bumpRevision(householdId) {
+    const rev = getRevision(householdId) + 1;
+    setRevision(householdId, rev);
+    return rev;
+  }
+
   function mergeItems(local, remote) {
     const map = new Map();
     (local || []).forEach(function (item) { map.set(item.id, item); });
@@ -147,16 +161,40 @@
       meta: getLocalMeta(householdId) || {},
       members: getLocalMembersMap(householdId),
       items: getLocalItems(householdId),
+      revision: bumpRevision(householdId),
       updated_at: new Date().toISOString(),
       updated_by: updatedBy || null
     };
   }
 
-  function applyPayload(householdId, data) {
+  function applyPayload(householdId, data, memberId) {
     if (!data) return false;
-    if (data.meta && Object.keys(data.meta).length) saveLocalMeta(householdId, data.meta);
-    if (data.members) saveJSON(lsKey(householdId, "members"), mergeMembersMap(getLocalMembersMap(householdId), data.members));
-    if (Array.isArray(data.items)) saveLocalItems(householdId, mergeItems(getLocalItems(householdId), data.items));
+
+    const state = rooms.get(householdId);
+    if (state && data.updated_by === memberId && data.updated_at === state.lastSentAt) {
+      return false;
+    }
+
+    const localRev = getRevision(householdId);
+    if (data.revision != null && data.revision < localRev) {
+      return false;
+    }
+
+    if (data.meta && Object.keys(data.meta).length) {
+      saveLocalMeta(householdId, data.meta);
+    }
+    if (data.members) {
+      saveJSON(lsKey(householdId, "members"), mergeMembersMap(getLocalMembersMap(householdId), data.members));
+    }
+    if (Array.isArray(data.items)) {
+      saveLocalItems(householdId, data.items.filter(function (i) { return i.status === "pending"; }));
+    }
+    if (data.revision != null) {
+      setRevision(householdId, data.revision);
+    }
+    if (data.updated_at) {
+      saveJSON(lsKey(householdId, "lastApplied"), data.updated_at);
+    }
     return true;
   }
 
@@ -209,17 +247,16 @@
       notifyStatus(true);
       client.subscribe(topicFor(householdId), { qos: 1 }, function (err) {
         if (err) notifyStatus(false, "Subscribe failed: " + err.message);
-        else publishState(householdId, memberId, true);
       });
     });
 
     client.on("message", function (topic, message) {
       try {
         const data = JSON.parse(message.toString());
-        if (data.updated_by === memberId && data.updated_at === state.lastSentAt) return;
-        applyPayload(householdId, data);
-        notifyAll(householdId);
-        notifyStatus(true);
+        if (applyPayload(householdId, data, memberId)) {
+          notifyAll(householdId);
+          notifyStatus(true);
+        }
       } catch (e) {
         console.warn("Bad MQTT message:", e);
       }
@@ -405,12 +442,13 @@
     setItem: async function (householdId, item, memberId) {
       const items = getLocalItems(householdId);
       const idx = items.findIndex(function (i) { return i.id === item.id; });
+      item.modifiedAt = new Date().toISOString();
       if (idx >= 0) items[idx] = item;
       else items.push(item);
       const pending = items.filter(function (i) { return i.status === "pending"; });
       saveLocalItems(householdId, pending);
 
-      const state = getRoom(householdId);
+      const state = getRoom(householdId, memberId);
       state.itemCbs.forEach(function (cb) { cb(pending); });
 
       const mid = memberId || state.memberId;
@@ -422,12 +460,13 @@
       const items = getLocalItems(householdId).filter(function (i) { return i.id !== itemId; });
       saveLocalItems(householdId, items);
 
-      const state = getRoom(householdId);
+      const state = getRoom(householdId, memberId);
       state.itemCbs.forEach(function (cb) { cb(items); });
 
       const mid = memberId || state.memberId;
       const result = await publishState(householdId, mid);
       if (!result.ok) throw new Error(result.error);
+      return result;
     },
 
     removeAllListeners: stopAutoSync

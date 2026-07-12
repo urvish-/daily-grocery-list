@@ -21,11 +21,113 @@
   let sheetQty = 0;
   let syncEnabled = true;
   let syncStatus = { ok: true, syncing: false, time: null, error: null, cloud: false };
+  let deferredInstallPrompt = null;
   let unsubscribeItems = null;
   let unsubscribeMembers = null;
   let unsubscribeMeta = null;
 
   const $ = (sel) => document.querySelector(sel);
+
+  function isAppInstalled() {
+    return window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+  }
+
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
+  function isIOSChrome() {
+    return isIOS() && /CriOS/i.test(navigator.userAgent);
+  }
+
+  function isIOSNonSafari() {
+    return isIOS() && /CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent);
+  }
+
+  function isIOSSafari() {
+    return isIOS() && !isIOSNonSafari();
+  }
+
+  function isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+  }
+
+  function updateInstallButton() {
+    const btn = $("#installBtn");
+    if (!btn) return;
+    if (isAppInstalled()) {
+      btn.classList.add("hidden");
+      return;
+    }
+    btn.classList.remove("hidden");
+  }
+
+  function showInstallModal() {
+    $("#installModal").classList.remove("hidden");
+    const chromeOnIOS = isIOSNonSafari();
+    $("#installIOSChrome").classList.toggle("hidden", !chromeOnIOS);
+    $("#installIOS").classList.toggle("hidden", !isIOSSafari());
+    $("#installAndroid").classList.toggle("hidden", !isAndroid() || isIOS());
+    $("#installDesktop").classList.toggle("hidden", isIOS() || isAndroid());
+  }
+
+  function showIOSChromeBanner() {
+    if (isIOSNonSafari() && !isAppInstalled()) {
+      $("#iosChromeBanner").classList.remove("hidden");
+    }
+  }
+
+  function copyLinkForSafari() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(function () {
+      showToast("Link copied! Open Safari → paste in address bar");
+    }).catch(function () {
+      showToast("Copy this URL: " + url);
+    });
+  }
+
+  function hideInstallModal() {
+    $("#installModal").classList.add("hidden");
+  }
+
+  async function handleInstallClick() {
+    if (isAppInstalled()) {
+      showToast("App already installed on home screen");
+      return;
+    }
+    if (isIOSNonSafari()) {
+      showInstallModal();
+      return;
+    }
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      if (outcome === "accepted") {
+        showToast("App installed!");
+        updateInstallButton();
+      }
+      return;
+    }
+    showInstallModal();
+  }
+
+  function setupInstallPrompt() {
+    updateInstallButton();
+    showIOSChromeBanner();
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      updateInstallButton();
+    });
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      updateInstallButton();
+      showToast("App installed on home screen!");
+    });
+  }
 
   // ── Local identity ──
 
@@ -256,6 +358,7 @@
       return;
     }
     await persistItem(item);
+    showToast(`${item.name} updated`);
   }
 
   async function markPurchased(itemId) {
@@ -264,8 +367,12 @@
 
     const el = document.querySelector(`[data-item-id="${itemId}"]`);
     const finish = async () => {
-      await deleteItem(itemId);
-      showToast(`${item.name} purchased ✓`);
+      try {
+        await deleteItem(itemId);
+        showToast(`${item.name} purchased ✓`);
+      } catch {
+        showToast("Could not sync purchase — tap Sync now");
+      }
     };
 
     if (el) {
@@ -729,6 +836,14 @@
       activePanel = "catalog";
       render();
     });
+
+    $("#installBtn").addEventListener("click", handleInstallClick);
+    $("#iosSafariHelpBtn").addEventListener("click", showInstallModal);
+    $("#copySafariLinkBtn").addEventListener("click", copyLinkForSafari);
+    $("#installModalClose").addEventListener("click", hideInstallModal);
+    $("#installModal").addEventListener("click", (e) => {
+      if (e.target === $("#installModal")) hideInstallModal();
+    });
   }
 
   // ── Init ──
@@ -736,6 +851,7 @@
   async function init() {
     loadIdentity();
     bindEvents();
+    setupInstallPrompt();
     await loadCatalog();
 
     if (!GrocerySync.isConfigured()) {
@@ -765,6 +881,7 @@
     }
 
     render();
+    updateInstallButton();
 
     if (urlHome && urlHome !== householdId) {
       showSetupModal("join");

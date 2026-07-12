@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#2e7d32">
   <meta name="description" content="Shared household grocery list — add items, sync with family in real time">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Grocery List">
   <title>Daily Grocery List</title>
   <link rel="stylesheet" href="css/app.css">
   <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 </head>
@@ -25,9 +27,20 @@
         </div>
         <div class="app-subtitle hidden" id="householdLabel"></div>
       </div>
-      <button class="user-badge" id="userBadge" type="button">Set name</button>
+      <div class="header-actions">
+        <button class="install-btn hidden" id="installBtn" type="button" title="Add to Home Screen">
+          <span class="install-btn-icon">📲</span>
+          <span class="install-btn-text">Install</span>
+        </button>
+        <button class="user-badge" id="userBadge" type="button">Set name</button>
+      </div>
     </div>
   </header>
+
+  <div id="iosChromeBanner" class="banner-warning hidden">
+    ⚠️ <strong>Chrome on iPhone cannot install apps.</strong> Use <strong>Safari</strong> instead.
+    <button type="button" class="banner-link-btn" id="iosSafariHelpBtn">How to install</button>
+  </div>
 
   <div id="cloudWarning" class="banner-warning hidden">
     ⚠️ MQTT library failed to load — sync unavailable. Check internet and refresh.
@@ -165,6 +178,51 @@
       <p class="text-muted">So family knows who added or bought items.</p>
       <input type="text" id="nameInput" class="name-input" placeholder="e.g. Priya, Ravi, Maid" maxlength="30">
       <button class="btn btn-primary btn-full" id="nameConfirm" type="button">Continue</button>
+    </div>
+  </div>
+
+  <!-- Install Help Modal -->
+  <div id="installModal" class="name-modal hidden">
+    <div class="name-card setup-card">
+      <h2>📲 Add to Home Screen</h2>
+      <div id="installIOSChrome" class="hidden">
+        <div class="install-alert">
+          ⚠️ <strong>Chrome on iPhone cannot install apps.</strong><br>
+          Apple only allows Add to Home Screen from <strong>Safari</strong>.
+        </div>
+        <p class="text-muted"><strong>Follow these steps:</strong></p>
+        <ol class="install-steps">
+          <li>Tap <strong>Copy link for Safari</strong> below</li>
+          <li>Open the <strong>Safari</strong> app (blue compass icon)</li>
+          <li>Paste the link in Safari's address bar and go</li>
+          <li>In Safari, tap <strong>Install</strong> (top right) and follow steps</li>
+        </ol>
+        <button class="btn btn-secondary btn-full" id="copySafariLinkBtn" type="button">📋 Copy link for Safari</button>
+      </div>
+      <div id="installIOS" class="hidden">
+        <p class="text-muted">Install on <strong>iPhone / iPad</strong> using Safari:</p>
+        <ol class="install-steps">
+          <li>Tap the <strong>Share</strong> button <span class="step-icon">⬆️</span> at the <strong>bottom</strong> of Safari</li>
+          <li>Scroll down → tap <strong>Add to Home Screen</strong> <span class="step-icon">➕</span></li>
+          <li>Tap <strong>Add</strong> — app icon appears on your home screen</li>
+        </ol>
+      </div>
+      <div id="installAndroid" class="hidden">
+        <p class="text-muted">Install on <strong>Android</strong> (Chrome):</p>
+        <ol class="install-steps">
+          <li>Tap browser menu <strong>⋮</strong></li>
+          <li>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong></li>
+          <li>Confirm — icon appears on home screen</li>
+        </ol>
+      </div>
+      <div id="installDesktop" class="hidden">
+        <p class="text-muted">Install on <strong>Windows / Mac</strong> (Chrome or Edge):</p>
+        <ol class="install-steps">
+          <li>Click the <strong>install icon</strong> in the address bar, or</li>
+          <li>Browser menu → <strong>Install Daily Grocery List</strong></li>
+        </ol>
+      </div>
+      <button class="btn btn-primary btn-full" id="installModalClose" type="button">Got it</button>
     </div>
   </div>
 

@@ -18,15 +18,27 @@ Install **Daily Grocery List** on your phone or desktop for one-tap access — n
 
 ---
 
-## iPhone / iPad (Safari)
+## iPhone / iPad — IMPORTANT: Use Safari, NOT Chrome
 
-1. Open your grocery list URL in **Safari** (not Chrome)
-2. Tap the **Share** button (square with arrow, bottom center)
-3. Scroll down → tap **Add to Home Screen**
-4. Edit name if needed → tap **Add**
-5. Icon appears on home screen
+**Apple does not allow installing web apps from Chrome on iPhone.** This is an Apple restriction, not a bug in this app. Chrome on iOS cannot add apps to the home screen.
 
-> **Important:** iOS requires Safari for "Add to Home Screen". Chrome on iPhone does not support full PWA install.
+### If you use Chrome on iPhone
+
+1. Tap **Install** in the app (or the orange banner) → **Copy link for Safari**
+2. Open the **Safari** app (blue compass icon)
+3. Paste the link in Safari's address bar and go
+4. In Safari, tap **Install** (top right)
+5. Tap Share ⬆️ (bottom) → **Add to Home Screen** → **Add**
+
+### If you use Safari on iPhone
+
+1. Open the grocery list URL in **Safari**
+2. Tap **Install** (top right) for step-by-step help, or:
+3. Tap **Share** ⬆️ (bottom center)
+4. Scroll → **Add to Home Screen**
+5. Tap **Add**
+
+> **Tip:** After installing from Safari, open the app from your home screen icon — not from Chrome.
 
 ---
 
