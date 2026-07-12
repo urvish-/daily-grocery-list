@@ -1,80 +1,54 @@
 # Deploy to Netlify (Free)
 
-Host the app on Netlify. Family sync uses **Supabase free cloud** — see **[SUPABASE-SETUP.md](SUPABASE-SETUP.md)** (required for cross-device sync).
+No database setup. Sync uses **MQTT pub/sub** over a free public broker — zero configuration.
 
 ---
 
-## Cost: ₹0 forever
+## Cost: ₹0
 
 | Service | Purpose | Cost |
 |---|---|---|
 | **GitHub** | Code hosting | Free |
 | **Netlify** | HTTPS website | Free |
-| **Supabase** | Cloud sync (basket + members) | Free (no credit card) |
+| **MQTT broker** | Pub/sub sync (EMQX public) | Free |
 
 ---
 
-## Before deploy — configure cloud sync
+## Deploy steps
 
-1. Follow **[SUPABASE-SETUP.md](SUPABASE-SETUP.md)** (5 min)
-2. Edit `js/supabase-config.js` with your URL + anon key
-3. Commit and push
-
-Without this step, **family sync will not work across devices**.
-
----
-
-## Step 1 — Push to GitHub
+### 1. Push to GitHub
 
 ```bash
-cd daily-grocery-list
-git init
 git add .
-git commit -m "Free P2P family grocery list"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/daily-grocery-list.git
-git push -u origin main
+git commit -m "MQTT pub/sub family sync"
+git push origin main
 ```
 
----
+### 2. Netlify
 
-## Step 2 — Deploy to Netlify (1 click)
+1. [app.netlify.com](https://app.netlify.com) → **Import from GitHub**
+2. Select repo → Publish directory: `.`
+3. Deploy
 
-### Option A — Netlify dashboard
+### 3. Test sync (2 phones or incognito tabs)
 
-1. Go to [app.netlify.com](https://app.netlify.com/) → sign up free
-2. **Add new site** → **Import an existing project** → **GitHub**
-3. Select `daily-grocery-list`
-4. Build settings:
-   - **Build command:** (leave empty)
-   - **Publish directory:** `.`
-5. Click **Deploy site**
-6. Done — live at `https://your-name.netlify.app`
+**Tab 1 — Owner:**
+1. Create home → add items
+2. Copy share link from Family tab
 
-### Option B — Deploy button
+**Tab 2 — Family member:**
+1. Open share link
+2. Join with name
+3. Should see owner's items ✓
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/YOUR_USERNAME/daily-grocery-list)
-
-Replace `YOUR_USERNAME` with your GitHub username.
-
-### Custom name (optional)
-
-Netlify → **Site configuration** → **Domain management** → change site name to e.g. `sharma-grocery.netlify.app`
+Tap **Sync now** on either device if needed.
 
 ---
 
-## Step 3 — Share with family
+## Requirements
 
-1. Open your Netlify URL on your phone
-2. **Create new home** → enter home name + your name
-3. Go to **Family** tab → **Share link** on WhatsApp
-4. Family opens link → enters name → joins
-
----
-
-## Redeploy after changes
-
-Every `git push` to `main` auto-redeploys on Netlify.
+- **HTTPS** — Netlify provides this (required for WebSocket/MQTT in browser)
+- **Internet** — for pub/sub broker connection
 
 ---
 
@@ -82,24 +56,11 @@ Every `git push` to `main` auto-redeploys on Netlify.
 
 | Problem | Fix |
 |---|---|
-| List not syncing | Both phones need app open; check green dot in header |
-| New member sees empty list | Owner should open app first, then member reopens link |
-| Sync dot is yellow | Normal — waiting for family to come online |
-| Sync dot is green | Family member(s) online — live sync active |
-| App not loading on Netlify | Publish directory must be `.` (root) |
+| Sync dot yellow | Wait 2 sec for broker connection, or tap Sync now |
+| Sync dot red | Check internet; refresh page |
+| Joiner empty list | Owner must add items first; owner taps Sync now; joiner taps Sync now |
+| Works locally not on Netlify | Must use HTTPS URL (not file://) |
 
 ---
 
-## Local testing
-
-```bash
-python -m http.server 8080
-```
-
-Open `http://localhost:8080`. Open same URL in another browser tab to simulate two family members.
-
-> P2P sync works best over **HTTPS** (Netlify). Localhost works for basic testing.
-
----
-
-*See also: [INSTALL-APP.md](INSTALL-APP.md) · [SYNC.md](SYNC.md)*
+*See also: [SYNC.md](SYNC.md)*

@@ -4,17 +4,15 @@
 
 ---
 
-## Quick Start (Phase 2 — 100% Free)
+## Quick Start
 
 | Step | Action |
 |---|---|
-| 1 | **Set up free cloud sync** — **[docs/SUPABASE-SETUP.md](docs/SUPABASE-SETUP.md)** (5 min, ₹0) |
-| 2 | Edit `js/supabase-config.js` with your Supabase URL + key |
-| 3 | Push to GitHub → Deploy on Netlify — **[docs/DEPLOY.md](docs/DEPLOY.md)** |
-| 4 | Create home → share link → family joins and sees same basket |
-| 5 | Install on phone — **[docs/INSTALL-APP.md](docs/INSTALL-APP.md)** |
+| 1 | Push to GitHub → Deploy on Netlify — **[docs/DEPLOY.md](docs/DEPLOY.md)** |
+| 2 | Create home → share link with family |
+| 3 | **No Firebase/Supabase setup** — uses MQTT pub/sub automatically |
 
-**Supabase free tier** stores your basket in the cloud so family sync works even when joining from a new phone hours later.
+Sync explained: **[docs/SYNC.md](docs/SYNC.md)**
 
 ### Deploy to Netlify (after GitHub push)
 
@@ -424,11 +422,10 @@ Open **http://localhost:8080** on your phone (same Wi-Fi) or desktop browser.
 
 ### Phase 2 — Multi-user sync (Week 2) ✅
 
-- [x] **Supabase free cloud sync** (works when family joins later)
-- [x] Shareable URL with household ID (`?home=habc12345`)
-- [x] Real-time + auto sync every 12 seconds
-- [x] **Manual Sync now button** in Family tab
-- [x] Sync error display + toast notifications
+- [x] **MQTT pub/sub sync** (WebSocket — no Firebase/Supabase/API keys)
+- [x] Retained messages — join from new device gets latest basket
+- [x] Real-time push on every change
+- [x] **Manual Sync now** button
 - [x] Member name on add/purchase events
 - [x] Owner sees family members list
 - [x] Family tab with copy/share link
@@ -440,9 +437,9 @@ Open **http://localhost:8080** on your phone (same Wi-Fi) or desktop browser.
 
 #### Setup & deploy
 
-Full guide: **[docs/SUPABASE-SETUP.md](docs/SUPABASE-SETUP.md)** + **[docs/DEPLOY.md](docs/DEPLOY.md)**
+Full guide: **[docs/DEPLOY.md](docs/DEPLOY.md)**
 
-How sync works: **[docs/SYNC.md](docs/SYNC.md)**
+How pub/sub sync works: **[docs/SYNC.md](docs/SYNC.md)**
 
 #### Install as app
 
@@ -470,9 +467,8 @@ Home screen install guide: **[docs/INSTALL-APP.md](docs/INSTALL-APP.md)**
 
 | Item | Cost |
 |---|---|
-| **GitHub** | Source code | Free |
 | **Netlify** | HTTPS hosting | Free |
-| **Trystero P2P** | Real-time family sync | Free (no server) |
+| **MQTT broker** | Pub/sub real-time sync | Free |
 | Domain name (optional) | Custom URL | ~₹500–800/year |
 | **Total** | | **₹0/month** |
 
@@ -524,11 +520,8 @@ daily-grocery-list/
 ├── css/app.css
 ├── js/
 │   ├── app.js                ← main app logic
-│   ├── sync.js               ← Supabase cloud sync
-│   ├── supabase-config.js    ← your free Supabase keys
-│   └── supabase-config.example.js
-├── supabase/
-│   └── schema.sql            ← run once in Supabase SQL editor
+│   ├── sync.js               ← MQTT pub/sub sync
+│   └── mqtt-config.js        ← broker URL (optional)
 ├── data/
 │   ├── default-catalog.json
 │   └── catalog.js

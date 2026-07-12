@@ -163,10 +163,8 @@
     });
     syncStatus = GrocerySync.getSyncStatus();
 
-    if (GrocerySync.isCloudReady()) {
-      GrocerySync.startAutoSync(householdId);
-      GrocerySync.syncNow(householdId).catch(() => {});
-    }
+    GrocerySync.startAutoSync(householdId, memberId);
+    setTimeout(() => GrocerySync.syncNow(householdId, memberId).catch(() => {}), 500);
   }
 
   async function manualSync() {
@@ -179,20 +177,20 @@
       btn.disabled = true;
       btn.textContent = "Syncing…";
     }
-    const result = await GrocerySync.syncNow(householdId);
+    const result = await GrocerySync.syncNow(householdId, memberId);
     if (btn) {
       btn.disabled = false;
       btn.textContent = "🔄 Sync now";
     }
-    if (result.ok) showToast("Synced with cloud ✓");
-    else showToast("Sync failed: " + (result.error || "unknown error"));
+    if (result.ok) showToast("Synced via pub/sub ✓");
+    else showToast("Sync failed: " + (result.error || "check internet"));
     render();
   }
 
   async function persistItem(item) {
     if (syncEnabled && householdId) {
       try {
-        await GrocerySync.setItem(householdId, item);
+        await GrocerySync.setItem(householdId, item, memberId);
       } catch (e) {
         showToast("Save failed — tap Sync now in Family tab");
         throw e;
@@ -203,7 +201,7 @@
   async function deleteItem(itemId) {
     if (syncEnabled && householdId) {
       try {
-        await GrocerySync.removeItem(householdId, itemId);
+        await GrocerySync.removeItem(householdId, itemId, memberId);
       } catch (e) {
         showToast("Update failed — tap Sync now in Family tab");
         throw e;
@@ -291,9 +289,6 @@
     render();
     $("#syncInfo").classList.remove("hidden");
     showToast("Home created! Share link with family.");
-    if (!GrocerySync.isCloudReady()) {
-      showToast("⚠️ Set up free cloud sync — see docs/SUPABASE-SETUP.md");
-    }
   }
 
   async function joinHousehold(hId, name) {
@@ -387,7 +382,7 @@
       if (householdId) {
         if (!syncStatus.cloud) {
           cls = "waiting";
-          title = "Cloud not configured — family sync won't work across devices";
+          title = "Connecting to pub/sub broker…";
         } else if (syncStatus.error) {
           cls = "error";
           title = "Sync error: " + syncStatus.error;
@@ -397,8 +392,8 @@
         } else {
           cls = "online";
           title = syncStatus.time
-            ? "Cloud sync OK · " + new Date(syncStatus.time).toLocaleTimeString()
-            : "Cloud sync active";
+            ? "Pub/sub sync OK · " + new Date(syncStatus.time).toLocaleTimeString()
+            : "Pub/sub sync active";
         }
       }
       syncDot.className = "sync-dot " + cls;
@@ -514,8 +509,8 @@
     const syncLabel = $("#syncStatusLabel");
     if (syncLabel) {
       if (!GrocerySync.isCloudReady()) {
-        syncLabel.textContent = "⚠️ Cloud sync not set up — see docs/SUPABASE-SETUP.md";
-        syncLabel.className = "sync-status-label error";
+        syncLabel.textContent = "Connecting to MQTT pub/sub broker…";
+        syncLabel.className = "sync-status-label";
       } else if (syncStatus.error) {
         syncLabel.textContent = "❌ " + syncStatus.error;
         syncLabel.className = "sync-status-label error";
@@ -526,7 +521,7 @@
         syncLabel.textContent = "✓ Last synced " + new Date(syncStatus.time).toLocaleTimeString();
         syncLabel.className = "sync-status-label ok";
       } else {
-        syncLabel.textContent = "Auto-sync every 12 seconds";
+        syncLabel.textContent = "Auto-sync via MQTT pub/sub (real-time)";
         syncLabel.className = "sync-status-label";
       }
     }

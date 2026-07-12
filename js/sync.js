@@ -1,17 +1,26 @@
 /**
- * Cloud sync via Supabase (free tier) + localStorage cache.
- * Reliable cross-device sync — works when family joins hours later.
+ * Real-time sync via MQTT pub/sub (WebSocket).
+ * - No Firebase / Supabase / API keys
+ * - Retained messages: new family members get latest basket on join
+ * - Manual + auto publish on changes
  */
 (function () {
   "use strict";
 
   const rooms = new Map();
-  let supabase = null;
   let syncStatusCb = null;
-  let pollTimer = null;
   let lastSyncTime = null;
   let lastSyncError = null;
   let syncing = false;
+  let mqttReady = typeof mqtt !== "undefined";
+
+  function cfg() {
+    return window.MQTT_CONFIG || {};
+  }
+
+  function topicFor(householdId) {
+    return (cfg().topicPrefix || "daily-grocery/v1/households/") + householdId;
+  }
 
   function genId(prefix) {
     return prefix + Math.random().toString(36).slice(2, 10);
@@ -104,57 +113,56 @@
   }
 
   function notifyStatus(ok, error) {
-    lastSyncTime = ok ? Date.now() : lastSyncTime;
-    lastSyncError = ok ? null : (error || lastSyncError);
+    if (ok) lastSyncTime = Date.now();
+    if (ok) lastSyncError = null;
+    else if (error) lastSyncError = error;
     if (syncStatusCb) {
       syncStatusCb({
-        ok: ok,
+        ok: !lastSyncError,
         syncing: syncing,
         time: lastSyncTime,
         error: lastSyncError,
-        cloud: isCloudReady()
+        cloud: isConnected()
       });
     }
-  }
-
-  function isCloudReady() {
-    return !!supabase;
   }
 
   function isConfigured() {
-    return window.SUPABASE_URL &&
-      window.SUPABASE_URL !== "YOUR_SUPABASE_URL" &&
-      window.SUPABASE_ANON_KEY &&
-      window.SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY";
+    return mqttReady && !!cfg().brokerUrl;
+  }
+
+  function isConnected() {
+    let any = false;
+    rooms.forEach(function (r) { if (r.connected) any = true; });
+    return any;
   }
 
   function init() {
-    if (!isConfigured()) return false;
-    if (typeof window.supabase === "undefined") return false;
-    try {
-      supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-      return true;
-    } catch (e) {
-      console.error("Supabase init failed:", e);
-      return false;
-    }
+    mqttReady = typeof mqtt !== "undefined";
+    return mqttReady && !!cfg().brokerUrl;
   }
 
-  function getRoom(householdId) {
-    if (!rooms.has(householdId)) {
-      rooms.set(householdId, {
-        householdId: householdId,
-        itemCbs: [],
-        memberCbs: [],
-        metaCbs: [],
-        channel: null
-      });
-    }
-    return rooms.get(householdId);
+  function buildPayload(householdId, updatedBy) {
+    return {
+      meta: getLocalMeta(householdId) || {},
+      members: getLocalMembersMap(householdId),
+      items: getLocalItems(householdId),
+      updated_at: new Date().toISOString(),
+      updated_by: updatedBy || null
+    };
+  }
+
+  function applyPayload(householdId, data) {
+    if (!data) return false;
+    if (data.meta && Object.keys(data.meta).length) saveLocalMeta(householdId, data.meta);
+    if (data.members) saveJSON(lsKey(householdId, "members"), mergeMembersMap(getLocalMembersMap(householdId), data.members));
+    if (Array.isArray(data.items)) saveLocalItems(householdId, mergeItems(getLocalItems(householdId), data.items));
+    return true;
   }
 
   function notifyAll(householdId) {
-    const state = getRoom(householdId);
+    const state = rooms.get(householdId);
+    if (!state) return;
     const items = getLocalItems(householdId);
     const members = getLocalMembers(householdId);
     const meta = getLocalMeta(householdId);
@@ -163,138 +171,157 @@
     if (meta) state.metaCbs.forEach(function (cb) { cb(meta); });
   }
 
-  function applyCloudRow(householdId, row) {
-    if (!row) return false;
-    let changed = false;
-
-    if (row.meta && Object.keys(row.meta).length) {
-      saveLocalMeta(householdId, row.meta);
-      changed = true;
+  function connectRoom(householdId, memberId) {
+    if (rooms.has(householdId) && rooms.get(householdId).client) {
+      return rooms.get(householdId);
     }
-    if (row.members && Object.keys(row.members).length) {
-      saveJSON(lsKey(householdId, "members"), mergeMembersMap(getLocalMembersMap(householdId), row.members));
-      changed = true;
-    }
-    if (Array.isArray(row.items)) {
-      saveLocalItems(householdId, mergeItems(getLocalItems(householdId), row.items));
-      changed = true;
-    }
-    return changed;
-  }
 
-  async function fetchCloud(householdId) {
-    if (!supabase) return null;
-    const res = await supabase.from("households").select("*").eq("id", householdId).maybeSingle();
-    if (res.error) throw new Error(res.error.message);
-    return res.data;
-  }
-
-  async function pushCloud(householdId) {
-    if (!supabase) return;
-    const payload = {
-      id: householdId,
-      meta: getLocalMeta(householdId) || {},
-      members: getLocalMembersMap(householdId),
-      items: getLocalItems(householdId),
-      updated_at: new Date().toISOString()
+    const state = rooms.get(householdId) || {
+      householdId: householdId,
+      itemCbs: [],
+      memberCbs: [],
+      metaCbs: [],
+      client: null,
+      connected: false,
+      memberId: memberId,
+      lastSentAt: null
     };
-    const res = await supabase.from("households").upsert(payload, { onConflict: "id" });
-    if (res.error) throw new Error(res.error.message);
+
+    if (!mqttReady) {
+      rooms.set(householdId, state);
+      notifyStatus(false, "MQTT library not loaded");
+      return state;
+    }
+
+    const clientId = "grocery_" + (memberId || genId("m")) + "_" + Math.random().toString(36).slice(2, 6);
+    const client = mqtt.connect(cfg().brokerUrl, {
+      clientId: clientId,
+      clean: true,
+      reconnectPeriod: 4000,
+      connectTimeout: 10000
+    });
+
+    state.client = client;
+    state.memberId = memberId;
+
+    client.on("connect", function () {
+      state.connected = true;
+      notifyStatus(true);
+      client.subscribe(topicFor(householdId), { qos: 1 }, function (err) {
+        if (err) notifyStatus(false, "Subscribe failed: " + err.message);
+        else publishState(householdId, memberId, true);
+      });
+    });
+
+    client.on("message", function (topic, message) {
+      try {
+        const data = JSON.parse(message.toString());
+        if (data.updated_by === memberId && data.updated_at === state.lastSentAt) return;
+        applyPayload(householdId, data);
+        notifyAll(householdId);
+        notifyStatus(true);
+      } catch (e) {
+        console.warn("Bad MQTT message:", e);
+      }
+    });
+
+    client.on("error", function (err) {
+      notifyStatus(false, err.message || "MQTT error");
+    });
+
+    client.on("offline", function () {
+      state.connected = false;
+      notifyStatus(false, "Broker offline — tap Sync now");
+    });
+
+    client.on("reconnect", function () {
+      notifyStatus(true);
+    });
+
+    rooms.set(householdId, state);
+    return state;
   }
 
-  async function syncNow(householdId) {
-    if (!householdId) return { ok: false, error: "No household" };
-    if (!supabase) return { ok: false, error: "Cloud not configured — see docs/SUPABASE-SETUP.md" };
+  function publishState(householdId, memberId, silent) {
+    const state = rooms.get(householdId);
+    if (!state || !state.client || !state.connected) {
+      if (!silent) notifyStatus(false, "Not connected to pub/sub broker");
+      return Promise.resolve({ ok: false, error: "Not connected" });
+    }
 
     syncing = true;
     notifyStatus(true);
 
-    try {
-      const cloud = await fetchCloud(householdId);
-      if (cloud) applyCloudRow(householdId, cloud);
-      await pushCloud(householdId);
-      notifyAll(householdId);
-      notifyStatus(true);
-      return { ok: true };
-    } catch (e) {
-      notifyStatus(false, e.message || "Sync failed");
-      return { ok: false, error: e.message || "Sync failed" };
-    } finally {
-      syncing = false;
-      notifyStatus(!lastSyncError);
-    }
-  }
+    const payload = buildPayload(householdId, memberId);
+    state.lastSentAt = payload.updated_at;
 
-  function startAutoSync(householdId) {
-    stopAutoSync();
-    if (!supabase || !householdId) return;
-
-    const state = getRoom(householdId);
-
-    if (state.channel) {
-      supabase.removeChannel(state.channel);
-    }
-
-    state.channel = supabase
-      .channel("household:" + householdId)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "households", filter: "id=eq." + householdId },
-        function (payload) {
-          if (payload.new) {
-            applyCloudRow(householdId, payload.new);
-            notifyAll(householdId);
+    return new Promise(function (resolve) {
+      state.client.publish(
+        topicFor(householdId),
+        JSON.stringify(payload),
+        { qos: 1, retain: true },
+        function (err) {
+          syncing = false;
+          if (err) {
+            notifyStatus(false, err.message);
+            resolve({ ok: false, error: err.message });
+          } else {
             notifyStatus(true);
+            resolve({ ok: true });
           }
         }
-      )
-      .subscribe(function (status) {
-        if (status === "CHANNEL_ERROR") notifyStatus(false, "Realtime connection error");
-      });
+      );
+    });
+  }
 
-    pollTimer = setInterval(function () {
-      syncNow(householdId).catch(function () {});
-    }, 12000);
-
-    document.addEventListener("visibilitychange", onVisible);
-
-    function onVisible() {
-      if (document.visibilityState === "visible" && householdId) {
-        syncNow(householdId).catch(function () {});
-      }
+  async function syncNow(householdId, memberId) {
+    if (!householdId) return { ok: false, error: "No household" };
+    const state = rooms.get(householdId);
+    if (!state || !state.connected) {
+      connectRoom(householdId, memberId);
+      await new Promise(function (r) { setTimeout(r, 1500); });
     }
+    return publishState(householdId, memberId || (state && state.memberId));
+  }
 
-    state.onVisible = onVisible;
+  function startAutoSync(householdId, memberId) {
+    connectRoom(householdId, memberId);
   }
 
   function stopAutoSync() {
-    if (pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
-    }
     rooms.forEach(function (state) {
-      if (state.onVisible) {
-        document.removeEventListener("visibilitychange", state.onVisible);
-      }
-      if (state.channel && supabase) {
-        supabase.removeChannel(state.channel);
-        state.channel = null;
+      if (state.client) {
+        try { state.client.end(true); } catch (e) { /* ignore */ }
       }
     });
+    rooms.clear();
+  }
+
+  function getRoom(householdId, memberId) {
+    if (!rooms.has(householdId)) {
+      rooms.set(householdId, {
+        householdId: householdId,
+        itemCbs: [],
+        memberCbs: [],
+        metaCbs: [],
+        client: null,
+        connected: false,
+        memberId: memberId
+      });
+    }
+    return rooms.get(householdId);
   }
 
   const GrocerySync = {
     isConfigured: isConfigured,
     init: init,
     genId: genId,
-    isCloudReady: isCloudReady,
+    isCloudReady: isConnected,
 
-    onSyncStatusChange: function (cb) {
-      syncStatusCb = cb;
-    },
+    onSyncStatusChange: function (cb) { syncStatusCb = cb; },
 
     getSyncStatus: function () {
-      return { ok: !lastSyncError, syncing: syncing, time: lastSyncTime, error: lastSyncError, cloud: isCloudReady() };
+      return { ok: !lastSyncError, syncing: syncing, time: lastSyncTime, error: lastSyncError, cloud: isConnected() };
     },
 
     syncNow: syncNow,
@@ -304,67 +331,41 @@
     createHousehold: async function (homeName, ownerName, ownerMemberId) {
       const householdId = genId("h");
       const now = new Date().toISOString();
-      const meta = { name: homeName || "My Home", createdBy: ownerMemberId, createdAt: now };
-      const member = { id: ownerMemberId, name: ownerName, role: "owner", joinedAt: now };
-
-      saveLocalMeta(householdId, meta);
-      saveLocalMember(householdId, member);
+      saveLocalMeta(householdId, { name: homeName || "My Home", createdBy: ownerMemberId, createdAt: now });
+      saveLocalMember(householdId, { id: ownerMemberId, name: ownerName, role: "owner", joinedAt: now });
       saveLocalItems(householdId, []);
 
-      getRoom(householdId);
+      getRoom(householdId, ownerMemberId);
       notifyAll(householdId);
-
-      if (supabase) {
-        const result = await syncNow(householdId);
-        if (!result.ok) throw new Error(result.error);
-        startAutoSync(householdId);
-      }
-
+      startAutoSync(householdId, ownerMemberId);
+      await new Promise(function (r) { setTimeout(r, 1200); });
+      await publishState(householdId, ownerMemberId);
       return householdId;
     },
 
     joinHousehold: async function (householdId, memberName, memberId) {
-      if (supabase) {
-        const cloud = await fetchCloud(householdId);
-        if (cloud) applyCloudRow(householdId, cloud);
-      }
+      getRoom(householdId, memberId);
+      startAutoSync(householdId, memberId);
+      await new Promise(function (r) { setTimeout(r, 1800); });
 
       const now = new Date().toISOString();
       const existing = getLocalMembers(householdId).find(function (m) { return m.id === memberId; });
-      const member = {
+      saveLocalMember(householdId, {
         id: memberId,
         name: memberName,
         role: existing ? existing.role : "member",
         joinedAt: existing ? existing.joinedAt : now
-      };
+      });
 
-      saveLocalMember(householdId, member);
-      getRoom(householdId);
       notifyAll(householdId);
-
-      if (supabase) {
-        const result = await syncNow(householdId);
-        if (!result.ok) throw new Error(result.error);
-        startAutoSync(householdId);
-      }
-
+      await publishState(householdId, memberId);
       return householdId;
     },
 
     getHousehold: async function (householdId) {
-      if (supabase) {
-        try {
-          const cloud = await fetchCloud(householdId);
-          if (cloud) applyCloudRow(householdId, cloud);
-        } catch (e) {
-          console.warn("Cloud fetch failed:", e);
-        }
-      }
-
       const meta = getLocalMeta(householdId);
       const membersObj = getLocalMembersMap(householdId);
       if (!meta && !Object.keys(membersObj).length) return null;
-
       return {
         name: meta && meta.name,
         createdBy: meta && meta.createdBy,
@@ -401,7 +402,7 @@
       };
     },
 
-    setItem: async function (householdId, item) {
+    setItem: async function (householdId, item, memberId) {
       const items = getLocalItems(householdId);
       const idx = items.findIndex(function (i) { return i.id === item.id; });
       if (idx >= 0) items[idx] = item;
@@ -412,39 +413,24 @@
       const state = getRoom(householdId);
       state.itemCbs.forEach(function (cb) { cb(pending); });
 
-      if (supabase) {
-        try {
-          await pushCloud(householdId);
-          notifyStatus(true);
-        } catch (e) {
-          notifyStatus(false, e.message);
-          throw e;
-        }
-      }
+      const mid = memberId || state.memberId;
+      const result = await publishState(householdId, mid);
+      if (!result.ok) throw new Error(result.error);
     },
 
-    removeItem: async function (householdId, itemId) {
+    removeItem: async function (householdId, itemId, memberId) {
       const items = getLocalItems(householdId).filter(function (i) { return i.id !== itemId; });
       saveLocalItems(householdId, items);
 
       const state = getRoom(householdId);
       state.itemCbs.forEach(function (cb) { cb(items); });
 
-      if (supabase) {
-        try {
-          await pushCloud(householdId);
-          notifyStatus(true);
-        } catch (e) {
-          notifyStatus(false, e.message);
-          throw e;
-        }
-      }
+      const mid = memberId || state.memberId;
+      const result = await publishState(householdId, mid);
+      if (!result.ok) throw new Error(result.error);
     },
 
-    removeAllListeners: function () {
-      stopAutoSync();
-      rooms.clear();
-    }
+    removeAllListeners: stopAutoSync
   };
 
   init();

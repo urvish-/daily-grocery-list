@@ -1,48 +1,84 @@
-# How Sync Works
+# How Sync Works — MQTT Pub/Sub
 
-## Why P2P was replaced
-
-The previous Trystero P2P sync **only worked when both phones were online at the same time**. If your wife opened the link while you were offline, she got an empty list. That is a limitation of peer-to-peer — there is no server to store data.
-
-## Current solution: Supabase cloud (free)
-
-```
-  Phone 1 ──→  ☁️ Supabase (free cloud)  ←── Phone 2
-  Phone 3 ──→         ↑
-  Maid    ──→    shared basket + members
-```
-
-| Feature | How it works |
-|---|---|
-| **Add item** | Saved to cloud instantly |
-| **Join from link** | Downloads existing basket from cloud |
-| **New family member** | Registered in cloud, visible to owner |
-| **Auto sync** | Every 12 seconds + realtime push |
-| **Manual sync** | **Sync now** button in Family tab |
-| **Offline** | Cached on device; syncs when back online |
-
-## Setup required (one time)
-
-See **[SUPABASE-SETUP.md](SUPABASE-SETUP.md)** — 5 minutes, ₹0 forever.
-
-Without Supabase config, the app works on **one device only**.
-
-## Manual sync
-
-Use **🔄 Sync now** in the **Family** tab when:
-- Family member just joined
-- List looks outdated
-- Header dot is red (error)
-- After fixing Supabase config
-
-## Error handling
-
-| Error | What happens |
-|---|---|
-| Cloud unreachable | Toast: "Save failed — tap Sync now" |
-| Sync fails | Red dot + error text in Family tab |
-| Item saved locally | Pushed to cloud on next successful sync |
+No Firebase. No Supabase. No API keys. No account signup.
 
 ---
 
-*See also: [SUPABASE-SETUP.md](SUPABASE-SETUP.md) · [DEPLOY.md](DEPLOY.md)*
+## Architecture
+
+```
+  Phone 1 (Owner)  ──publish──▶  📡 MQTT Broker  ◀──subscribe──  Phone 2 (Wife)
+       │                              │                              │
+       └──────── subscribe ◀── retained message ──▶ publish ────────┘
+```
+
+| Component | Technology |
+|---|---|
+| **Protocol** | MQTT over WebSocket (pub/sub) |
+| **Library** | [MQTT.js](https://github.com/mqttjs/MQTT.js) (open source) |
+| **Broker** | Free public broker (EMQX) — configured in `js/mqtt-config.js` |
+| **Persistence** | MQTT **retained messages** — last basket saved on broker topic |
+| **Local cache** | Browser `localStorage` on each device |
+
+---
+
+## How pub/sub works for your family
+
+1. **Owner creates home** → app publishes full basket + members to topic `daily-grocery/v1/households/{homeId}` with **retain=true**
+2. **Owner adds tomato** → publishes updated JSON → all subscribed phones receive instantly
+3. **Wife opens share link** (even hours later):
+   - Subscribes to same topic
+   - Broker delivers **retained message** with current basket
+   - She adds herself as member → publishes updated state
+4. **Owner sees** new member in Family tab via pub/sub push
+
+---
+
+## Manual sync
+
+**Family tab → Sync now** re-publishes current local state to the broker.
+
+Use when:
+- List looks outdated on another phone
+- Header dot is red/yellow
+- After joining from share link
+
+---
+
+## Configuration (optional)
+
+Default broker works out of the box. To change broker, edit `js/mqtt-config.js`:
+
+```javascript
+window.MQTT_CONFIG = {
+  brokerUrl: "wss://broker.emqx.io:8084/mqtt",
+  topicPrefix: "daily-grocery/v1/households/"
+};
+```
+
+---
+
+## Limitations (honest)
+
+| Limitation | Detail |
+|---|---|
+| Public broker | Fine for family use; household ID in URL is the secret |
+| Broker uptime | Public brokers can be slow; tap **Sync now** if needed |
+| Not end-to-end encrypted | OK for grocery lists; don't use for sensitive data |
+| Retained message size | Keep lists reasonable (< 100 items) |
+
+---
+
+## vs Firebase / Supabase
+
+| | MQTT pub/sub | Firebase / Supabase |
+|---|---|---|
+| Cost | ₹0 | ₹0 (free tier) |
+| Account setup | **None** | Required |
+| API keys | **None** | Required |
+| Join later | ✅ Retained messages | ✅ Database |
+| Real-time | ✅ Pub/sub push | ✅ Realtime DB |
+
+---
+
+*See also: [DEPLOY.md](DEPLOY.md) · [INSTALL-APP.md](INSTALL-APP.md)*
